@@ -139,7 +139,7 @@ cl.loan_id
     THEN tr.time_completed else NULL END) as last_collected_at
 FROM
   collection_loans cl
-JOIN transactions tr ON tr.loan_id = cl.loan_id
+LEFT JOIN transactions tr ON tr.loan_id = cl.loan_id
   AND tr.txn_type = 2
   AND tr.status in (2,5)
 JOIN final_dd f ON f.loan_id = cl.loan_id
@@ -176,7 +176,7 @@ SELECT
   , ROW_NUMBER() OVER (PARTITION BY cl.loan_id ORDER BY cl.assigned_at) as assignment_rank
   , ct.total_due
   -- below is to control for cases where we outsource after the loan is already paid in full
-  , case when ct.total_due - coalesce(ct.amt_prev_collected,0) <= 0 then null else ct.total_due - coalesce(ct.amt_prev_collected,0) end as assigned_amt
+  , case when ct.total_due - coalesce(ct.amt_prev_collected,0) <= 0 then null else ct.total_due - coalesce(ct.amt_prev_collected,0) end as amt_assigned
   , coalesce(ct.amt_collected,0) as amt_collected
   , coalesce(ct.repayment_count,0) as repayment_count
   , ct.first_collected_at
@@ -214,7 +214,8 @@ LEFT JOIN (
   on eos.loan_id = cl.loan_id
 WHERE
   cl.assigned_to <> 'removed_from_collections'
-  ct.total_due is NOT NULL
+  AND ct.total_due is NOT NULL
+  AND assigned_amt is NOT NULL
   )
 ;
 
